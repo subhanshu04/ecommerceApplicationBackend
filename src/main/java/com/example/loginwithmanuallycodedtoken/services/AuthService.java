@@ -1,37 +1,39 @@
 package com.example.loginwithmanuallycodedtoken.services;
 
-import com.example.loginwithmanuallycodedtoken.ValidateUserDto;
 import com.example.loginwithmanuallycodedtoken.dtos.UserDTO;
 import com.example.loginwithmanuallycodedtoken.dtos.UserLoginDTO;
+import com.example.loginwithmanuallycodedtoken.dtos.ValidateUserDTO;
 import com.example.loginwithmanuallycodedtoken.exceptions.UserDoesNotExistException;
 import com.example.loginwithmanuallycodedtoken.exceptions.WrongPasswordException;
+import com.example.loginwithmanuallycodedtoken.models.Role;
 import com.example.loginwithmanuallycodedtoken.models.Session;
 import com.example.loginwithmanuallycodedtoken.models.SessionStatus;
 import com.example.loginwithmanuallycodedtoken.models.User;
 import com.example.loginwithmanuallycodedtoken.repositories.SessionRepo;
 import com.example.loginwithmanuallycodedtoken.repositories.UserRepo;
-import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.MultiValueMap;
 import org.springframework.util.MultiValueMapAdapter;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Optional;
-import java.util.Random;
+import java.util.Set;
 
 @Service
 public class AuthService {
     private UserRepo userRepo;
     private SessionRepo sessionRepo;
     private BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+    private JWTService jwtService;
 
-    public AuthService(UserRepo userRepo, SessionRepo sessionRepo) {
+    public AuthService(UserRepo userRepo, SessionRepo sessionRepo, JWTService jwtService) {
         this.userRepo = userRepo;
         this.sessionRepo = sessionRepo;
+        this.jwtService = jwtService;
     }
 
     public void signUp(UserLoginDTO userLoginDTO){
@@ -49,12 +51,13 @@ public class AuthService {
         if(userOptional.isEmpty()){
             throw new UserDoesNotExistException();
         }
-        User user = userOptional.get();;
+        User user = userOptional.get();
         if(!bCryptPasswordEncoder.matches(userLoginDto.getPassword(),user.getPassword())){
             throw new WrongPasswordException();
         }
-        String token = RandomStringUtils.randomAscii(20);
-
+        String token = jwtService.generateJwtToken(user);
+        System.out.println(token);
+        System.out.println(jwtService.getUser(token));
         Session session = new Session();
         session.setToken(token);
         session.setUser(user);
@@ -69,12 +72,27 @@ public class AuthService {
         return new ResponseEntity<>(userDTO,headers, HttpStatus.OK);
     }
 
-    public String validateUser(Long userId,String token){
-        Session session = sessionRepo.findByUser_Id(userId).get();
-        if(session.getToken().equals(token)){
-            return "user is valid";
+    public ResponseEntity<ValidateUserDTO> validateUser(String token){
+        Optional<Session> optionalSession = sessionRepo.findByToken(token);
+        if(optionalSession.isEmpty()){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        return "User invalid";
+        Session session = optionalSession.get();
+        if(!session.getSessionStatus().equals(SessionStatus.ACTIVE)){
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        boolean isUserAdmin = false;
+        for(Role role : session.getUser().getRoles()){
+            if(role.getName().equals("ADMIN")){
+                isUserAdmin = true;
+            }
+        }
+        if(!isUserAdmin){
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+        ValidateUserDTO validateUserDTO = new ValidateUserDTO();
+        validateUserDTO.setUserId(session.getUser().getId());
+        validateUserDTO.setToken(token);
+        return new ResponseEntity<>(validateUserDTO,HttpStatus.OK);
     }
-
 }

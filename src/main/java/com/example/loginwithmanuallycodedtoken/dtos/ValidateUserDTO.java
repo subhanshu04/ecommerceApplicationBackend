@@ -1,5 +1,6 @@
 package com.example.loginwithmanuallycodedtoken.dtos;
 
+import com.example.loginwithmanuallycodedtoken.models.User;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -8,4 +9,5 @@ import lombok.Setter;
 public class ValidateUserDTO {
     private Long userId;
     private String token;
+
 }
