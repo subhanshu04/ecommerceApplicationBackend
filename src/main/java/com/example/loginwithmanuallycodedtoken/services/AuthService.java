@@ -11,28 +11,26 @@ import com.example.loginwithmanuallycodedtoken.models.SessionStatus;
 import com.example.loginwithmanuallycodedtoken.models.User;
 import com.example.loginwithmanuallycodedtoken.repositories.SessionRepo;
 import com.example.loginwithmanuallycodedtoken.repositories.UserRepo;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MultiValueMapAdapter;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class AuthService {
     private UserRepo userRepo;
     private SessionRepo sessionRepo;
-    private BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+    private PasswordEncoder bCryptPasswordEncoder;
     private JWTService jwtService;
 
-    public AuthService(UserRepo userRepo, SessionRepo sessionRepo, JWTService jwtService) {
+    public AuthService(UserRepo userRepo, SessionRepo sessionRepo, PasswordEncoder bCryptPasswordEncoder, JWTService jwtService) {
         this.userRepo = userRepo;
         this.sessionRepo = sessionRepo;
+        this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.jwtService = jwtService;
     }
 
